@@ -130,24 +130,34 @@ class BoChunk(BoString):
     - test methods start with "__is_xxx".
     - chunk type constants end in "_MARKER" to be differenciated from ``BoString`` constants
     """
-    def __init__(self, string):
-        BoString.__init__(self, string)
-        self.BO_MARKER = 100
-        self.NON_BO_MARKER = 101
-        self.PUNCT_MARKER = 102
-        self.NON_PUNCT_MARKER = 103
-        self.SPACE_MARKER = 104
-        self.NON_SPACE_MARKER = 105
-        self.SYL_MARKER = 106
+
+    BO_MARKER = 100
+    NON_BO_MARKER = 101
+    PUNCT_MARKER = 102
+    NON_PUNCT_MARKER = 103
+    SPACE_MARKER = 104
+    NON_SPACE_MARKER = 105
+    SYL_MARKER = 106
+    SYMBOL_MARKER = 107
+    NON_SYMBOL_MARKER = 108
+    NUMBER_MARKER = 109
+    NON_NUMBER_MARKER = 110
+
+    def __init__(self, string, ignore_chars=[]):
+        BoString.__init__(self, string, ignore_chars=ignore_chars)
         self.chunk_markers = {self.BO_MARKER: 'bo',
                               self.NON_BO_MARKER: 'non-bo',
                               self.PUNCT_MARKER: 'punct',
                               self.NON_PUNCT_MARKER: 'non-punct',
                               self.SPACE_MARKER: 'space',
                               self.NON_SPACE_MARKER: 'non-space',
-                              self.SYL_MARKER: 'syl'}
+                              self.SYL_MARKER: 'syl',
+                              self.SYMBOL_MARKER: 'sym',
+                              self.NON_SYMBOL_MARKER: 'non-sym',
+                              self.NUMBER_MARKER: 'num',
+                              self.NON_NUMBER_MARKER: 'non-num'}
 
-    def chunk_bo_chars(self, start=None, end=None, yes=100, no=101):
+    def chunk_bo_chars(self, start=None, end=None, yes=BO_MARKER, no=NON_BO_MARKER):
         """
         Chunks input into Tibetan valid characters("bo") or something else("non-bo").
 
@@ -173,7 +183,7 @@ class BoChunk(BoString):
         """
         return self.base_structure[char_idx] != self.OTHER
 
-    def chunk_punct(self, start=None, end=None, yes=102, no=103):
+    def chunk_punct(self, start=None, end=None, yes=PUNCT_MARKER, no=NON_PUNCT_MARKER):
         """
         Chunks input into Tibetan text("punct") or non-Tibetan("non-punct").
 
@@ -186,10 +196,54 @@ class BoChunk(BoString):
         """
         Tests whether the character at the given index is a Tibetan punctuation or not.
         """
-        return self.base_structure[char_idx] == self.PUNCT or \
-            self.base_structure[char_idx] == self.SPECIAL_PUNCT
+        # if a tsek or a space is right after
+        if char_idx \
+                and (self.base_structure[char_idx-1] == self.SYMBOLS
+                     or self.base_structure[char_idx-1] == self.NUM
+                     or self.base_structure[char_idx-1] == self.OTHER
+                     or self.base_structure[char_idx-1] == self.PUNCT
+                     or self.base_structure[char_idx-1] == self.SPECIAL_PUNCT
+                     or self.base_structure[char_idx-1] == self.TSEK
+                     or self.base_structure[char_idx - 1] == self.SPACE) \
+                and (self.base_structure[char_idx] == self.TSEK
+                     or self.base_structure[char_idx] == self.SPACE
+                     or self.base_structure[char_idx] == self.PUNCT):
+            return True
 
-    def chunk_spaces(self, start=None, end=None, yes=104, no=105):
+        return self.base_structure[char_idx] == self.PUNCT \
+            or self.base_structure[char_idx] == self.SPECIAL_PUNCT
+
+    def chunk_symbol(self, start=None, end=None, yes=SYMBOL_MARKER, no=NON_SYMBOL_MARKER):
+        """
+        Chunks input into Tibetan text("sym") or non-Tibetan("non-sym").
+
+        :type yes: int (hard-coded value of SYM_MARKER)
+        :type no: int (hard-coded value of NON_SYM_MARKER)
+        """
+        return self.__chunk_using(self.__is_sym, start, end, yes, no)
+
+    def __is_sym(self, char_idx):
+        """
+        Tests whether the character at the given index is a Tibetan symbols or not.
+        """
+        return self.base_structure[char_idx] == self.SYMBOLS
+
+    def chunk_number(self, start=None, end=None, yes=NUMBER_MARKER, no=NON_NUMBER_MARKER):
+        """
+        Chunks input into Tibetan text("num") or non-Tibetan("non-num").
+
+        :type yes: int (hard-coded value of NUM_MARKER)
+        :type no: int (hard-coded value of NON_NUM_MARKER)
+        """
+        return self.__chunk_using(self.__is_num, start, end, yes, no)
+
+    def __is_num(self, char_idx):
+        """
+        Tests whether the character at the given index is a number  or not.
+        """
+        return self.base_structure[char_idx] == self.NUM
+
+    def chunk_spaces(self, start=None, end=None, yes=SPACE_MARKER, no=NON_SPACE_MARKER):
         """
         Chunks input into any valid Unicode spaces("space") or something else("non-space").
 
@@ -204,7 +258,7 @@ class BoChunk(BoString):
         """
         return self.base_structure[char_idx] == self.SPACE
 
-    def syllabify(self, start=None, end=None, yes=106):
+    def syllabify(self, start=None, end=None, yes=SYL_MARKER):
         """
         Chunks valid Tibetan text(expected input) into syllables(tsek is included if present).
 
@@ -213,19 +267,21 @@ class BoChunk(BoString):
         if not start and not end:
             start, end = 0, self.len
 
-        indices = self.__chunk(start, end, self.__is_tsek)
+        indices = self.__chunk(start, end, self.__is_tsek_or_long_skrt_vowel)
         for num, i in enumerate(indices):
             if i[0] and num - 1 >= 0 and not indices[num - 1][0]:
                 indices[num - 1] = (indices[num - 1][0], indices[num - 1][1], indices[num - 1][2] + i[2])
 
         return [(yes, i[1], i[2]) for i in indices if not i[0]]
 
-    def __is_tsek(self, char_idx):
+    def __is_tsek_or_long_skrt_vowel(self, char_idx):
         """
-        Tests whether the character at the given index in a tsek or not.
+        Tests whether the character at the given index is an unambiguous end-marker or not.
         Used as test to find syllable boundaries by ``syllabify()``.
+        ::note:
         """
-        return self.base_structure[char_idx] == self.TSEK
+        return self.base_structure[char_idx] == self.TSEK or \
+            self.base_structure[char_idx] == self.SKRT_LONG_VOW
 
     def get_chunked(self, indices, gen=False):
         """

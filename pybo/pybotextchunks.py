@@ -12,13 +12,9 @@ class PyBoTextChunks(PyBoChunk):
               (the indices to every non-space and non-tsek char in every syllable chunk)
             - the chunk itself
 
-    :Example:
-
-    >>>
-
     """
-    def __init__(self, string):
-        PyBoChunk.__init__(self, string)
+    def __init__(self, string, ignore_chars=[]):
+        PyBoChunk.__init__(self, string, ignore_chars=ignore_chars)
         self.chunks = self.serve_syls_to_trie()
 
     def serve_syls_to_trie(self):
@@ -48,5 +44,6 @@ class PyBoTextChunks(PyBoChunk):
         """
         Tests whether the character at the given index is part of the cleaned syllable or not.
         """
-        return self.base_structure[char_idx] != self.TSEK and \
-               self.base_structure[char_idx] != self.SPACE
+        return self.base_structure[char_idx] != self.TSEK \
+            and self.base_structure[char_idx] != self.SPACE \
+            and self.base_structure[char_idx] != self.SKRT_LONG_VOW

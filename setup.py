@@ -3,36 +3,29 @@
 
 from __future__ import print_function
 
-import os
-import sys
-from setuptools import setup, find_packages
+from pathlib import Path
+import setuptools
+from pkg_resources import parse_version
+
+assert(parse_version(setuptools.__version__) >= parse_version("38.6.0"))
 
 
 def read(fname):
-    fname_rst = fname.replace('.md', '.rst')
-    if os.path.exists(fname_rst):
-        return open(os.path.join(os.path.dirname(__file__), fname_rst)).read()
-    else:
-        try:
-            import pypandoc
-            rst = pypandoc.convert(os.path.join(os.path.dirname(__file__), fname), 'rst')
-            with open(fname_rst, 'w') as f:
-                f.write(rst)
-            return rst
-        except (IOError, ImportError):
-            return open(os.path.join(os.path.dirname(__file__), fname)).read()
+    p = Path(__file__).parent / fname
+    with p.open(encoding='utf-8') as f:
+        return f.read()
 
 
-setup(
+setuptools.setup(
     name="pybo",
-    version="0.1.5",  #edit version in __init__.py
+    version="0.2.21",  # also edit version in pybo/__init__.py
     author="Esukhia development team",
     author_email="esukhiadev@gmail.com",
     description="Python utils for processing Tibetan",
     license="Apache2",
     keywords="nlp computational_linguistics search ngrams language_models linguistics toolkit tibetan",
     url="https://github.com/Esukhia/pybo",
-    packages=find_packages(),
+    packages=setuptools.find_packages(),
     long_description=read('README.md'),
     long_description_content_type="text/markdown",
     project_urls={
@@ -49,9 +42,11 @@ setup(
         "License :: OSI Approved :: Apache Software License",
         "Natural Language :: Tibetan"
     ],
-    package_data={'pybo': ['resources/*', 'resources/trie/*', 'resources/lemmas/*', 'resources/rules/*']},
-    python_requires='>=3',
+    package_data={'pybo': ['resources/*', 'resources/trie/*', 'resources/frequency/*', 'resources/lemmas/*', 'resources/rules/*', 'resources/sanskrit/*']},
+    python_requires='>=3.4',
+    # setup_requires=["pytest-runner"],
+    tests_require=["pytest"],
     install_requires=[
-        'pyyaml'
+        'pyyaml',
     ],
 )

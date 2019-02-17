@@ -5,10 +5,12 @@
 
 
 class Node:
-    def __init__(self, label=None, leaf=False, data=None):
+    def __init__(self, label=None, leaf=False, data=None, freq=None, skrt=None):
         self.label = label
         self.leaf = leaf
         self.data = data
+        self.freq = freq
+        self.skrt = skrt
         self.children = dict()
 
     def add_child(self, key, leaf=False):
@@ -34,7 +36,7 @@ class BasicTrie:
     def __getitem__(self, key):
         return self.head.children[key]
 
-    def add(self, word, data=None):
+    def add(self, word, data=None, freq=None, skrt=None):
         current_node = self.head
         word_finished = True
 
@@ -55,6 +57,10 @@ class BasicTrie:
         current_node.leaf = True
         if data:
             current_node.data = data
+        if freq:
+            current_node.freq = freq
+        if skrt:
+            current_node.skrt = skrt
 
     def walk(self, char, current_node=None):
         if not current_node:
@@ -93,7 +99,7 @@ class BasicTrie:
         else:
             return {'exists': exists}
 
-    def add_data_to_word(self, word, data, overwrite=False):
+    def add_data_to_word(self, word, data, ins, overwrite=False):
         """ Adds data to a word, returns True if the data was added, False otherwise """
         if not word or word == '':
             return False
@@ -108,19 +114,29 @@ class BasicTrie:
         if not current_node.leaf:
             return False
 
-        if current_node.data:
+        to_data = True if ins == "data" else False
+        if (to_data and current_node.data) or \
+                (to_data == False and current_node.freq):
             if overwrite:
-                current_node.data = data
+                if to_data:
+                    current_node.data = data
+                else:
+                    current_node.freq = int(data)
                 return True
             else:
                 return False
         else:
-            current_node.data = data
+            if to_data:
+                current_node.data = data
+            else:
+                current_node.freq = int(data)
             return True
 
-    def remove_word(self, word):
+    def deactivate_word(self, word):
         """
-        removes the word, returns True if the word was present, False otherwise
+        make the word not findable.
+
+        :return True if the word exists, False otherwise
         """
         current_node = self.head
         for letter in word:
@@ -130,6 +146,7 @@ class BasicTrie:
                 return False
         current_node.leaf = False
         current_node.data = None
+        current_node.freq = None
         return True
 
 

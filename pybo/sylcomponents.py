@@ -1,7 +1,8 @@
 # coding: utf-8
 import re
-import os
+
 import json
+from pathlib import Path
 
 
 class SylComponents:
@@ -12,10 +13,11 @@ class SylComponents:
     def __init__(self):
         # check for possible dadrag https://github.com/eroux/tibetan-spellchecker/blob/master/doc/second-suffix-da.md
         # roots is an import from root + rareC and wazurC and suffixes is the 'AB' entry from  suffixes.json
-        self.data_path = os.path.join(os.path.split(__file__)[0], "resources", "SylComponents.json")
+        self.data_path = Path(__file__).parent / "resources" / "SylComponents.json"
 
-        with open(self.data_path, 'r', -1, 'utf-8-sig') as f:
+        with self.data_path.open('r', encoding='utf-8-sig') as f:
             data = json.loads(f.read())
+
         self.dadrag = data['dadrag']
         self.roots = data['roots']
         self.suffixes = data['suffixes']
@@ -136,7 +138,7 @@ class SylComponents:
                     None if more than one solution from get_parts()
         """
         components = self.get_parts(syl)
-        if type(components) == 'list' or not components:
+        if type(components) == list or not components:
             return None
         else:
             return self.mingzhis[components[0]]
@@ -145,9 +147,11 @@ class SylComponents:
         """
         :param syl: syllable
         :return: required info to part_agreement:
-                - dadrag
-                - thame
-                - the syllable
+                - "dadrag" A syllable that historically received a "da" second suffix.
+                            As for now, the list contains ["ཀུན", "ཤིན", "འོན"] (See pybo/resources/SylComponents.json)
+                - "thame"  A syllable that has the potential of hosting an affixed particle.
+                            Will be returned for all such syls, whether or not there is a particle.
+                - the syllable itself in all other cases
         """
         mingzhi = self.get_mingzhi(syl)
         if not mingzhi:
@@ -155,7 +159,7 @@ class SylComponents:
         else:
             if syl in self.dadrag:
                 return 'dadrag'
-            elif re.findall(mingzhi + '([ྱྲླྭྷ]?[ིེོུ]?(འ?[ིོུ]?ར?ས?|(འ[མང])?|(འིའོ)?))$', syl) != []:
+            elif re.search(mingzhi + '([ྱྲླྭྷ]?[ིེོུ]?(འ?[ིོུ]?ར?ས?|(འ[མང])|(འོའ[མང])|(འིའ[ོམང])))$', syl) is not None:
                 return 'thame'
             else:
                 return syl
@@ -172,3 +176,5 @@ if __name__ == '__main__':
     """ example of use """
     sc = SylComponents()
     assert sc.get_parts('བཀྲིས') == ('བཀྲ', 'ིས')
+    assert(sc.get_info('དེའིའམ') == 'thame')
+    assert(sc.get_info('དེའི') == 'thame')

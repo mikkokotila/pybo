@@ -2,17 +2,21 @@ from pybo import *
 
 
 def test_token_to_string():
-    tok = Tokenizer(PyBoTrie(BoSyl(), 'empty'))
-    tok.trie.add('བཀྲ་ཤིས་', data='NOUN')
-    tokens = tok.tokenize(PyBoTextChunks('བཀྲ་ཤིས།'))
+    tok = Tokenizer(PyBoTrie(BoSyl(), 'empty', config=Config("pybo.yaml")))
+    tok.trie.rebuild_trie()
+    tok.trie.add('བཀྲ་ཤིས་', data='NOUN', freq=17500)
+    tokens = tok.tokenize(PyBoTextChunks('བཀྲ་ཤིས།'), phono=True)
     expected = """content: "བཀྲ་ཤིས"
-char types: |cons|cons|sub-cons|tsek|cons|vow|cons|
+cleaned_content: "བཀྲ་ཤིས་"
+unaffixed_word: "བཀྲ་ཤིས་"
+char_types: |cons|cons|sub-cons|tsek|cons|vow|cons|
 type: syl
-start in input: 0
-length: 7
-syl chars in content(བཀྲ ཤིས): [[0, 1, 2], [4, 5, 6]]
+start: 0
+len: 7
+syls (བཀྲ ཤིས): [[0, 1, 2], [4, 5, 6]]
 tag: NOUN
-POS: NOUN
+pos: NOUN
+freq: 17500
 """
     assert tokens[0].__repr__() == expected
     assert tokens[1].content == '།'
@@ -21,7 +25,8 @@ POS: NOUN
 
 
 def test_non_max2():
-    tok = Tokenizer(PyBoTrie(BoSyl(), 'empty'))
+    tok = Tokenizer(PyBoTrie(BoSyl(), 'empty', config=Config("pybo.yaml")))
+    tok.trie.rebuild_trie()
     tok.trie.add('བཀྲ་ཤིས་', data='NOUN')
     tok.trie.add('བཀྲ་ཤིས་བདེ་ལེགས།', data='EXCL')
     tokens = tok.tokenize(PyBoTextChunks('བཀྲ་ཤིས་བདེ་བཀྲ་'))
@@ -30,11 +35,12 @@ def test_non_max2():
     assert tokens[1].content == 'བདེ་'
     assert tokens[1].tag == 'non-word'
     assert tokens[2].content == 'བཀྲ་'
-    assert tokens[2].tag == 'non-word'
+    assert tokens[2].tag == 'oov'
 
 
 def test_non_max_end_of_string():
-    tok = Tokenizer(PyBoTrie(BoSyl(), 'empty'))
+    tok = Tokenizer(PyBoTrie(BoSyl(), 'empty', config=Config("pybo.yaml")))
+    tok.trie.rebuild_trie()
     tok.trie.add('བཀྲ་ཤིས་')
     tok.trie.add('བཀྲ་ཤིས་བདེ་ལེགས།')
     tokens = tok.tokenize(PyBoTextChunks('བཀྲ་ཤིས་བདེ་'))
@@ -43,8 +49,9 @@ def test_non_max_end_of_string():
 
 
 def test_split_token():
-    trie = PyBoTrie(BoSyl(), 'empty')
-    trie.inflect_n_add('བདེ་བ་', 'NOUN')
+    trie = PyBoTrie(BoSyl(), 'empty', config=Config("pybo.yaml"))
+    trie.rebuild_trie()
+    trie.inflect_n_add('བདེ་བ་', 'NOUN', ins='data')
     trie.add('གཏན་', 'NOUN')
     trie.add('གྱི་', data='PART')
     tok = Tokenizer(trie)

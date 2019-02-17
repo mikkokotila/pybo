@@ -1,4 +1,5 @@
 # coding: utf-8
+from re import search
 
 
 class BoString:
@@ -38,23 +39,40 @@ class BoString:
                 Be sure to create the corresponding constants in ``__init__()`` and the corresponding
                 entries in ``__init__().char_markers``.
     """
-    def __init__(self, string):
-        self.CONS = 1
-        self.SUB_CONS = 2
-        self.VOW = 3
-        self.TSEK = 4
-        self.SKRT_CONS = 5
-        self.SKRT_SUB_CONS = 6
-        self.SKRT_VOW = 7
-        self.PUNCT = 8
-        self.NUM = 9
-        self.IN_SYL_MARK = 10
-        self.SPECIAL_PUNCT = 11
-        self.SYMBOLS = 12
-        self.NON_BO_NON_SKRT = 13
-        self.OTHER = 14
-        self.SPACE = 15
-        self.UNDERSCORE = 16  # used to mark spaces in input when segmented by pytib
+    cons = "ཀཁགངཅཆཇཉཏཐདནཔཕབམཙཚཛཝཞཟའཡརལཤསཧཨཪ"
+    CONS = 1
+    sub_cons = "ྐྒྔྕྗྙྟྡྣྤྦྨྩྫྭྱྲླྷ"
+    SUB_CONS = 2
+    vow = "ིེོུ"
+    VOW = 3
+    tsek = "་༌"
+    TSEK = 4
+    skrt_cons = "གྷཊཋཌཌྷཎདྷབྷཛྷཥཀྵ྅"
+    SKRT_CONS = 5
+    skrt_sub_cons = "ྑྖྠྥྪྮྯྰྴྶྸྺྻྼཱྒྷྚྛྜྜྷྞྡྷྦྷྫྷྵྐྵ"
+    SKRT_SUB_CONS = 6
+    skrt_vow = "ཱཱིུྲྀཷླྀཹ྄ཱཻཽྀྀྂྃ྆"
+    SKRT_VOW = 7
+    skrt_long_vow = "ཿ"
+    SKRT_LONG_VOW = 17
+    normal_punct = "༄༅༆༈།༎༏༐༑༔༴༼༽"
+    PUNCT = 8
+    numerals = "༠༡༢༣༤༥༦༧༨༩"
+    NUM = 9
+    in_syl_marks = "༵༷༸ཾ"
+    IN_SYL_MARK = 10
+    special_punct = "༁༂༃༒༇༉༊༺༻༾༿࿐࿑࿓࿔"
+    SPECIAL_PUNCT = 11
+    symbols = "ༀ༓༕༖༗༘༙༚༛༜༝༞༟༪༫༬༭༮༯༰༱༲༳༶༹྇ྈྉྊྋྌྍྎྏ྾྿࿀࿁࿂࿃࿄࿅࿆࿇࿈࿉࿊࿋࿌࿎࿏࿒࿕࿖࿗࿘࿙࿚"
+    SYMBOLS = 12
+    non_bo_non_skrt = "ཫཬ"
+    NON_BO_NON_SKRT = 13
+    OTHER = 14
+    # all spaces from the unicode tables
+    spaces = ["\t", " ", " ", "᠎", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "​", " ", " ", "　", "﻿"]
+    SPACE = 15
+
+    def __init__(self, string, ignore_chars=[]):
         self.char_markers = {self.CONS: 'cons',
                              self.SUB_CONS: 'sub-cons',
                              self.VOW: 'vow',
@@ -62,6 +80,7 @@ class BoString:
                              self.SKRT_CONS: 'skrt-cons',
                              self.SKRT_SUB_CONS: 'skrt-sub-cons',
                              self.SKRT_VOW: 'skrt-vow',
+                             self.SKRT_LONG_VOW: 'skrt-long-vow',
                              self.PUNCT: 'punct',
                              self.NUM: 'num',
                              self.IN_SYL_MARK: 'in-syl-mark',
@@ -69,12 +88,10 @@ class BoString:
                              self.SYMBOLS: 'symbol',
                              self.NON_BO_NON_SKRT: 'no-bo-no-skrt',
                              self.OTHER: 'other',
-                             self.SPACE: 'space',
-                             self.UNDERSCORE: 'underscore'}
+                             self.SPACE: 'space'}
 
-        # all spaces from the unicode tables
-        self.spaces = [" ", " ", "᠎", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", " ", "​", " ", " ", "　", "﻿"]
-
+        for c in ignore_chars:
+            self.spaces.append(c)
         self.string = string
         self.len = len(string)
         self.base_structure = {}
@@ -84,51 +101,38 @@ class BoString:
         """
         Populates ``__init__().base_structure``.
         """
-        cons = "ཀཁགངཅཆཇཉཏཐདནཔཕབམཙཚཛཝཞཟའཡརལཤསཧཨཪ"
-        sub_cons = "ྐྒྔྕྗྙྟྡྣྤྦྨྩྫྭྱྲླྷ"
-        vow = "ིེོུ"
-        tsek = "་༌"
-        skrt_cons = "གྷཊཋཌཌྷཎདྷབྷཛྷཥཀྵ྅"
-        skrt_sub_cons = "ྑྖྠྥྪྮྯྰྴྶྸྺྻྼཱྒྷྚྛྜྜྷྞྡྷྦྷྫྷྵྐྵ"
-        skrt_vow = "ཱཱིུྲྀཷླྀཹ྄ཱཻཽྀྀྂྃ྆ཿ"
-        normal_punct = "༄༅༆༈།༎༏༐༑༔༴༼༽"
-        numerals = "༠༡༢༣༤༥༦༧༨༩"
-        in_syl_marks = "༵༷༸ཾ"
-        special_punct = "༁༂༃༒༇༉༊༺༻༾༿࿐࿑࿓࿔"
-        symbols = "ༀ༓༕༖༗༘༙༚༛༜༝༞༟༪༫༬༭༮༯༰༱༲༳༶༹྇ྈྉྊྋྌྍྎྏ྾྿࿀࿁࿂࿃࿄࿅࿆࿇࿈࿉࿊࿋࿌࿎࿏࿒࿕࿖࿗࿘࿙࿚"
-        non_bo_non_skrt = "ཫཬ"
         for i in range(len(self.string)):
             char = self.string[i]
-            if char in cons:
+            if char in self.cons:
                 self.base_structure[i] = self.CONS
-            elif char in sub_cons:
+            elif char in self.sub_cons:
                 self.base_structure[i] = self.SUB_CONS
-            elif char in vow:
+            elif char in self.vow:
                 self.base_structure[i] = self.VOW
-            elif char in tsek:
+            elif char in self.tsek:
                 self.base_structure[i] = self.TSEK
-            elif char in skrt_cons:
+            elif char in self.skrt_cons:
                 self.base_structure[i] = self.SKRT_CONS
-            elif char in skrt_sub_cons:
+            elif char in self.skrt_sub_cons:
                 self.base_structure[i] = self.SKRT_SUB_CONS
-            elif char in skrt_vow:
+            elif char in self.skrt_vow:
                 self.base_structure[i] = self.SKRT_VOW
-            elif char in normal_punct:
+            elif char in self.skrt_long_vow:
+                self.base_structure[i] = self.SKRT_LONG_VOW
+            elif char in self.normal_punct:
                 self.base_structure[i] = self.PUNCT
-            elif char in numerals:
+            elif char in self.numerals:
                 self.base_structure[i] = self.NUM
-            elif char in in_syl_marks:
+            elif char in self.in_syl_marks:
                 self.base_structure[i] = self.IN_SYL_MARK
-            elif char in special_punct:
+            elif char in self.special_punct:
                 self.base_structure[i] = self.SPECIAL_PUNCT
-            elif char in symbols:
+            elif char in self.symbols:
                 self.base_structure[i] = self.SYMBOLS
-            elif char in non_bo_non_skrt:
+            elif char in self.non_bo_non_skrt:
                 self.base_structure[i] = self.NON_BO_NON_SKRT
             elif char in self.spaces:
                 self.base_structure[i] = self.SPACE
-            elif char == '_':
-                self.base_structure[i] = self.UNDERSCORE
             else:
                 self.base_structure[i] = self.OTHER
 
@@ -158,3 +162,25 @@ class BoString:
             return {n: self.base_structure[i] for n, i in enumerate(range(start_idx, start_idx + slice_len))}
         else:
             return {i: self.base_structure[i] for i in range(start_idx, start_idx + slice_len)}
+
+    @staticmethod
+    def _is_skrt_syl(syl):
+        """
+        Checks whether a given syllable is Sanskrit.
+        Uses the regexes of Paul Hackett from his Visual Basic script
+
+        :param syl: syllable__ to test
+        :return: True if it is Sanskrit, False otherwise
+
+        .. note:: the original comments are preserved
+        .. Todo:: find source
+        """
+        # Now do Sanskrit: Skt.vowels, [g|d|b|dz]+_h, hr, shr, Skt
+        regex1 = r"([ཀ-ཬཱ-྅ྐ-ྼ]{0,}[ཱཱཱིུ-ཹཻཽ-ྃ][ཀ-ཬཱ-྅ྐ-ྼ]{0,}|[ཀ-ཬཱ-྅ྐ-ྼ]{0,}[གཌདབཛྒྜྡྦྫ][ྷ][ཀ-ཬཱ-྅ྐ-ྼ]{0,}|" \
+                 r"[ཀ-ཬཱ-྅ྐ-ྼ]{0,}[ཤཧ][ྲ][ཀ-ཬཱ-྅ྐ-ྼ]{0,}|" \
+                 r"[ཀ-ཬཱ-྅ྐ-ྼ]{0,}[གྷཊ-ཎདྷབྷཛྷཥཀྵ-ཬཱཱཱིུ-ཹཻཽ-ྃྒྷྚ-ྞྡྷྦྷྫྷྵྐྵ-ྼ][ཀ-ཬཱ-྅ྐ-ྼ]{0,})"
+        # more Sanskrit: invalid superscript-subscript pairs
+        regex2 = r"([ཀ-ཬཱ-྅ྐ-ྼ]{0,}[ཀཁགང-ཉཏ-དན-བམ-ཛཝ-ཡཤཧཨ][ྐ-ྫྷྮ-ྰྴ-ྼ][ཀ-ཬཱ-྅ྐ-ྼ]{0,})"
+        # tsa-phru mark used in Chinese transliteration
+        regex3 = r"([ཀ-ཬཱ-྅ྐ-ྼ]{0,}[༹][ཀ-ཬཱ-྅ྐ-ྼ]{0,})"
+        return search(regex1, syl) or search(regex2, syl) or search(regex3, syl)

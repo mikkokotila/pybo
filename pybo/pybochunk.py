@@ -9,22 +9,22 @@ class PyBoChunk(BoChunk):
     Implements the following chunking pipeline:
             chunk "input_str" into "bo"/"non-bo"
             | chunk "bo" into "punct"/"bo"
+            | chunk "bo" into "sym"/"bo"
+            | chunk "bo" into "num"/"bo"
             | chunk "bo" into syllables
             | delete chunks containing spaces and transfer their content to the previous chunk
-
-    :Example:
-
-    >>>
 
     .. note:: Following Tibetan usage, it does not consider space as a punctuation mark.
     Spaces get attached to the chunk preceding them.
     """
-    def __init__(self, string):
-        BoChunk.__init__(self, string)
+    def __init__(self, string, ignore_chars=[]):
+        BoChunk.__init__(self, string, ignore_chars=ignore_chars)
 
     def chunk(self, indices=True, gen=False):
         chunks = self.chunk_bo_chars()
         self.pipe_chunk(chunks, self.chunk_punct, to_chunk=self.BO_MARKER, yes=self.PUNCT_MARKER)
+        self.pipe_chunk(chunks, self.chunk_symbol, to_chunk=self.BO_MARKER, yes=self.SYMBOL_MARKER)
+        self.pipe_chunk(chunks, self.chunk_number, to_chunk=self.BO_MARKER, yes=self.NUMBER_MARKER)
         self.pipe_chunk(chunks, self.syllabify, to_chunk=self.BO_MARKER, yes=self.SYL_MARKER)
         self.__attach_space_chunks(chunks)
         if not indices:
@@ -40,7 +40,13 @@ class PyBoChunk(BoChunk):
         """
         for num, i in enumerate(indices):
             if num - 1 >= 0 and self.__only_contains_spaces(i[1], i[1] + i[2]):
-                indices[num - 1] = (indices[num - 1][0], indices[num - 1][1], indices[num - 1][2] + i[2])
+                previous_chunk = indices[num - 1]
+                inc = 0
+                while not previous_chunk:
+                    inc += 1
+                    previous_chunk = indices[num - 1 - inc]
+
+                indices[num - 1 - inc] = (previous_chunk[0], previous_chunk[1], previous_chunk[2] + i[2])
                 indices[num] = False
 
         c = 0

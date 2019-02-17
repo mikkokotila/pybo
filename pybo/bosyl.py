@@ -1,5 +1,4 @@
 # coding: utf-8
-import re
 from .sylcomponents import SylComponents
 
 
@@ -12,17 +11,25 @@ class BoSyl(SylComponents):
                         'འམ': {'len': 2, 'POS': 'am'},
                         'འང': {'len': 2, 'POS': 'ang'},
                         'འོ': {'len': 2, 'POS': 'o'},
-                        'འིའོ': {'len': 4, 'POS': 'gi+o'}
+                        'འིའོ': {'len': 4, 'POS': 'gi+o'},
+                        'འིའམ': {'len': 4, 'POS': 'gi+am'},
+                        'འིའང': {'len': 4, 'POS': 'gi+ang'},
+                        'འོའམ': {'len': 4, 'POS': 'o+am'},
+                        'འོའང': {'len': 4, 'POS': 'o+ang'}
                         }
 
     def is_affixable(self, syl):
         """expects a clean syllable without ending tsek"""
-        regex = r'(ར|ས|འི|འམ|འང|འོ)$'
-        return self.is_thame(syl) and re.findall(regex, syl) == []
+        affixable = False
+        if self.is_thame(syl):
+            affixable = True
+            for ending in ['ར', 'ས', 'འི', 'འོ', 'མ', 'ང']:
+                if len(syl) > len(ending) and syl.endswith(ending):
+                    affixable = False
+        return affixable
 
     def get_all_affixed(self, syl):
         """
-
         :param syl: syl to be affixed
         :return: if affixable: list of (<syl+affixed>, {'len': int, 'POS': str, 'aa': bool})
                  otherwise   : <syl>
@@ -50,7 +57,7 @@ if __name__ == '__main__':
     bs = BoSyl()
     print(bs.is_affixable('དྭོགས'))
     test = 'བཀྲིས'
-    for syl in ['བཀྲིས', 'བཀའ', 'བཀྲི', 'དེའོ', 'དེའིའོ', 'དགས', 'ལེགས']:
+    for syl in ['བཀྲིས', 'བཀའ', 'བཀྲི', 'དེའོ', 'དེའིའོ', 'དགས', 'ལེགས', 'དེའིའམ', 'མ']:
         print(syl, 'can be affixed:', bs.is_affixable(syl))
         if bs.is_affixable(syl):
             print(bs.get_all_affixed(syl))
